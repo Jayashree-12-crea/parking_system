@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Intelligent Parking System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+  <meta http-equiv="refresh" content="30"/>
+</head>
+<body>
+
+  <nav class="navbar">
+    <span class="nav-logo">🅿️ Intelligent Parking System</span>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/api/status" target="_blank">API</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    {% if data %}
+
+    <p class="timestamp">Last updated: {{ data.timestamp }}</p>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-label">Vacant</p>
+        <p class="stat-value green">{{ data.vacant_count }}</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Occupied</p>
+        <p class="stat-value red">{{ data.occupied_count }}</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Total Spots</p>
+        <p class="stat-value">{{ data.total_spots }}</p>
+      </div>
+
+      <div class="stat-card highlight">
+        <p class="stat-label">Recommended</p>
+        <p class="stat-value yellow">{{ data.recommended_spot or 'None' }}</p>
+        <p class="stat-sub">
+          {% if data.recommended_distance %}
+            {{ "%.1f"|format(data.recommended_distance) }}m away
+          {% else %}
+            N/A
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+
+      <!-- IMAGE -->
+      <div class="card">
+        <h2>Parking Lot View</h2>
+        {% if image %}
+          <img src="data:image/jpeg;base64,{{ image }}"
+               alt="Parking Lot"
+               class="parking-image"/>
+        {% else %}
+          <div class="no-image">No image available.<br/>Run detect_parking.py first.</div>
+        {% endif %}
+
+        <div class="legend">
+          <span class="legend-item">
+            <span class="dot green-bg"></span> Vacant
+          </span>
+          <span class="legend-item">
+            <span class="dot red-bg"></span> Occupied
+          </span>
+          <span class="legend-item">
+            <span class="dot yellow-bg"></span> Recommended
+          </span>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="right-panel">
+
+        <!-- RECOMMENDATION -->
+        {% if data.recommended_spot %}
+        <div class="rec-banner">
+          <div>
+            <p class="rec-label">Recommended Spot</p>
+            <p class="rec-spot">{{ data.recommended_spot }}</p>
+            <p class="rec-dist">
+              {{ "%.1f"|format(data.recommended_distance) if data.recommended_distance else "N/A" }}m from entrance
+            </p>
+
+            {% if data.recommended_coords %}
+            <p class="rec-gps">
+              GPS: {{ data.recommended_coords.lat }},
+                   {{ data.recommended_coords.lon }}
+            </p>
+            {% endif %}
+          </div>
+          <div class="rec-icon">⭐</div>
+        </div>
+        {% endif %}
+
+        <!-- SPOT LIST -->
+        <div class="card">
+          <h2>All Parking Spots</h2>
+          <div class="spot-list">
+            <div class="spot-header">
+              <span>Spot</span>
+              <span>Status</span>
+              <span>IoU</span>
+            </div>
+
+            {% for spot in data.spots %}
+            <div class="spot-row
+              {% if spot.name == data.recommended_spot %}recommended{% endif %}
+              {% if spot.occupied %}occupied{% else %}vacant{% endif %}">
+              
+              <span class="spot-name">{{ spot.name }}</span>
+
+              <span class="spot-status">
+                {% if spot.occupied %}
+                  <span class="badge red">OCCUPIED</span>
+                {% else %}
+                  <span class="badge green">VACANT</span>
+                {% endif %}
+              </span>
+
+              <span class="spot-iou">{{ spot.iou }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PROOF TABLE -->
+    <div class="card proof-card">
+      <h2>Localization Proof — Distance Calculation</h2>
+      <table class="proof-table">
+        <thead>
+          <tr>
+            <th>Spot</th>
+            <th>Status</th>
+            <th>GPS Coordinates</th>
+            <th>Recommended</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for spot in data.spots %}
+          <tr class="{% if spot.name == data.recommended_spot %}rec-row{% endif %}">
+            <td class="spot-name">{{ spot.name }}</td>
+            <td>
+              {% if spot.occupied %}
+                <span class="badge red">OCCUPIED</span>
+              {% else %}
+                <span class="badge green">VACANT</span>
+              {% endif %}
+            </td>
+            <td class="gps-text">
+              {% if not spot.occupied %}
+                Loading...
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if spot.name == data.recommended_spot %}
+                <span class="badge yellow">⭐ NEAREST</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% else %}
+    <div class="no-data">
+      <p>No parking data found.</p>
+      <p>Run <code>python detect_parking.py</code> first,
+         then refresh this page.</p>
+    </div>
+    {% endif %}
+
+  </div>
+
+</body>
+</html>
