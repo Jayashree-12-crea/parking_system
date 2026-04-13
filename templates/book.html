@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book a Slot — Smart Parking</title>
+
+  <link rel="stylesheet" href="/static/style.css"/>
+  <link rel="stylesheet" href="/static/book.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="background-glow top-left"></div>
+<div class="background-glow bottom-right glow-blue"></div>
+
+<header>
+  <div class="header-left">
+    <h1><span class="emoji">🅿️</span> Smart Parking</h1>
+  </div>
+  <div class="header-right">
+    <!-- ✅ Flask route, not a static file -->
+    <a href="/" class="btn-outline">← Back to Dashboard</a>
+  </div>
+</header>
+
+<div class="container booking-container">
+  <div class="booking-card glass-panel">
+
+    <div class="booking-header">
+      <h2>Reserve Your Spot</h2>
+      <p>Your slot will be reserved for <strong>10 minutes</strong>.</p>
+    </div>
+
+    <!-- FORM -->
+    <form id="booking-form" class="booking-form">
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="name" placeholder="John Doe" required />
+      </div>
+
+      <div class="form-group">
+        <label>Vehicle Plate</label>
+        <!-- ✅ id="plate" matches what /api/book expects -->
+        <input type="text" id="plate" placeholder="TN01AB1234" required />
+      </div>
+
+      <div class="form-group">
+        <label>Nearest Available Spot</label>
+        <input type="text" id="spot-display" disabled
+               style="opacity:0.7; cursor:not-allowed;"/>
+      </div>
+
+      <button type="submit" class="btn-primary w-full" id="submit-btn">
+        Confirm Booking
+      </button>
+
+      <div id="form-message" class="form-message"></div>
+
+    </form>
+
+    <!-- SUCCESS SCREEN -->
+    <div id="success-screen" class="success-screen hidden">
+      <h3>✅ Slot Booked Successfully!</h3>
+      <p id="success-text"></p>
+
+      <div class="countdown-timer glass-panel">
+        <span id="mins">10</span> :
+        <span id="secs">00</span>
+      </div>
+
+      <a href="/" class="btn-secondary">Go to Dashboard</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let selectedSpot = null;
+  let countdownInterval;
+
+  // Step 1: auto-fill nearest vacant spot
+  async function loadNearestSpot() {
+    try {
+      const res  = await fetch('/api/live_status');
+      const data = await res.json();
+
+      if (data.nearest) {
+        selectedSpot = data.nearest.name;
+      } else {
+        // fallback: first vacant spot in list
+        const vacant = (data.spots || []).find(s => !s.occupied);
+        selectedSpot = vacant ? vacant.name : null;
+      }
+
+      document.getElementById('spot-display').value =
+        selectedSpot || 'No spot available';
+
+    } catch (e) {
+      console.warn('Could not load nearest spot:', e);
+      document.getElementById('spot-display').value = 'Unavailable';
+    }
+  }
+
+  loadNearestSpot();
+
+  // Step 2: submit booking
+  document.getElementById('booking-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const msg = document.getElementById('form-message');
+    const btn = document.getElementById('submit-btn');
+
+    msg.textContent = '';
+    btn.disabled    = true;
+    btn.textContent = 'Processing…';
+
+    // ✅ Matches exactly what /api/book expects: { name, plate }
+    const payload = {
+      name:  document.getElementById('name').value.trim(),
+      plate: document.getElementById('plate').value.trim().toUpperCase(),
+    };
+
+    try {
+      const res  = await fetch('/api/book', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Booking failed');
+
+      // Show success
+      document.getElementById('booking-form').style.display        = 'none';
+      document.querySelector('.booking-header').style.display      = 'none';
+      document.getElementById('success-screen').classList.remove('hidden');
+      document.getElementById('success-text').textContent =
+        `${payload.name}, spot ${selectedSpot || 'reserved'} is held for 10 minutes.`;
+
+      startCountdown(600);
+
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.style.color = '#ef4444';
+      btn.disabled    = false;
+      btn.textContent = 'Confirm Booking';
+    }
+  });
+
+  // Step 3: countdown timer
+  function startCountdown(seconds) {
+    let remaining = seconds;
+    const minsEl  = document.getElementById('mins');
+    const secsEl  = document.getElementById('secs');
+
+    countdownInterval = setInterval(() => {
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      minsEl.textContent = String(m).padStart(2, '0');
+      secsEl.textContent = String(s).padStart(2, '0');
+
+      if (remaining <= 0) {
+        clearInterval(countdownInterval);
+        alert('Booking expired! Please book again.');
+        window.location.href = '/';
+      }
+      remaining--;
+    }, 1000);
+  }
+</script>
+
+</body>
+</html>

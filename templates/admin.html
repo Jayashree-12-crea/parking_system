@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Reservations</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: #0a0f1e;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    header h1 { font-size: 20px; font-weight: 600; color: #00e5ff; }
+    .btn-outline {
+      padding: 8px 18px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: #00e5ff; color: #00e5ff; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ── Stats strip ── */
+    .stats-strip {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      flex: 1;
+      min-width: 140px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 18px 22px;
+    }
+    .stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
+    .stat-card .value { font-size: 32px; font-weight: 700; margin-top: 4px; }
+    .stat-card.cyan  .value { color: #00e5ff; }
+    .stat-card.green .value { color: #22c55e; }
+    .stat-card.red   .value { color: #ef4444; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 9px 14px;
+      color: #e2e8f0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-box::placeholder { color: #475569; }
+    .search-box:focus { border-color: #00e5ff; }
+
+    .btn-refresh {
+      padding: 9px 20px;
+      background: #00e5ff;
+      color: #0a0f1e;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-refresh:hover { opacity: 0.85; }
+
+    .auto-badge {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: blink 1.4s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: rgba(255,255,255,0.06); }
+    th {
+      padding: 14px 18px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 500;
+    }
+    tbody tr {
+      border-top: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: rgba(255,255,255,0.04); }
+    td {
+      padding: 14px 18px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    td .plate {
+      display: inline-block;
+      background: rgba(0,229,255,0.1);
+      border: 1px solid rgba(0,229,255,0.3);
+      color: #00e5ff;
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      font-size: 13px;
+    }
+
+    .expires-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    .expires-ok   { background: rgba(34,197,94,0.12);  color: #22c55e; }
+    .expires-warn { background: rgba(250,204,21,0.12);  color: #facc15; }
+    .expires-gone { background: rgba(239,68,68,0.12);   color: #ef4444; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #475569;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🅿️ Admin — Reservations</h1>
+  <a href="/" class="btn-outline">← Dashboard</a>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-strip">
+    <div class="stat-card cyan">
+      <div class="label">Active bookings</div>
+      <div class="value" id="stat-active">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="label">Vacant spots</div>
+      <div class="value" id="stat-vacant">—</div>
+    </div>
+    <div class="stat-card red">
+      <div class="label">Occupied spots</div>
+      <div class="value" id="stat-occupied">—</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input class="search-box" id="search" type="text"
+           placeholder="Search by name or plate…" oninput="renderTable()"/>
+    <button class="btn-refresh" onclick="loadData()">↻ Refresh</button>
+    <span class="auto-badge"><span class="dot"></span> Auto-refresh every 10 s</span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Plate</th>
+          <th>Booked at</th>
+          <th>Expires in</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="5">
+          <div class="empty-state"><div class="icon">⏳</div><p>Loading…</p></div>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  let allRows = [];
+
+  async function loadData() {
+    try {
+      const [resRes, statusRes] = await Promise.all([
+        fetch('/api/reservations'),
+        fetch('/api/live_status'),
+      ]);
+      allRows = await resRes.json();
+
+      const status = await statusRes.json();
+      document.getElementById('stat-active').textContent   = allRows.length;
+      document.getElementById('stat-vacant').textContent   = status.vacant   ?? '—';
+      document.getElementById('stat-occupied').textContent = status.occupied ?? '—';
+
+      renderTable();
+    } catch (e) {
+      console.error('Load error:', e);
+    }
+  }
+
+  function renderTable() {
+    const q    = document.getElementById('search').value.toLowerCase();
+    const rows = allRows.filter(r =>
+      (r.name  || '').toLowerCase().includes(q) ||
+      (r.plate || '').toLowerCase().includes(q)
+    );
+
+    const tbody = document.getElementById('table-body');
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5">
+        <div class="empty-state">
+          <div class="icon">🅿️</div>
+          <p>${q ? 'No results for "' + q + '"' : 'No active reservations right now.'}</p>
+        </div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map((r, i) => {
+      const bookedAt  = new Date(r.createdAt);
+      const expiresAt = new Date(r.expireAt);
+      const now       = Date.now();
+      const secsLeft  = Math.floor((expiresAt - now) / 1000);
+
+      let pillClass, pillText;
+      if (secsLeft <= 0) {
+        pillClass = 'expires-gone'; pillText = 'Expired';
+      } else if (secsLeft < 120) {
+        pillClass = 'expires-warn';
+        pillText  = secsLeft + 's left';
+      } else {
+        const m = Math.floor(secsLeft / 60);
+        const s = secsLeft % 60;
+        pillClass = 'expires-ok';
+        pillText  = m + 'm ' + String(s).padStart(2,'0') + 's';
+      }
+
+      const timeStr = bookedAt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      const dateStr = bookedAt.toLocaleDateString([], {day:'numeric', month:'short'});
+
+      return `<tr>
+        <td style="color:#475569">${i + 1}</td>
+        <td>${r.name || '—'}</td>
+        <td><span class="plate">${r.plate || '—'}</span></td>
+        <td>${dateStr}, ${timeStr}</td>
+        <td><span class="expires-pill ${pillClass}">${pillText}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Tick countdown every second without re-fetching
+  setInterval(renderTable, 1000);
+
+  // Re-fetch from server every 10 seconds
+  loadData();
+  setInterval(loadData, 10000);
+</script>
+
+</body>
+</html>

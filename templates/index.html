@@ -3,191 +3,164 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Intelligent Parking System</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
-  <meta http-equiv="refresh" content="30"/>
+  <title>Smart Parking System — Live</title>
+
+  <link rel="stylesheet" href="/static/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    .nearest-banner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: #0f172a;
+      border: 2px solid #00e5ff;
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin: 16px 0;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.25);
+    }
+    .nearest-hidden { opacity: 0.4; }
+    .nearest-full {
+      border-color: #ef4444;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.25);
+    }
+    .nearest-icon {
+      width: 44px; height: 44px;
+      border-radius: 8px;
+      background: #00e5ff;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .nearest-full .nearest-icon { background: #ef4444; color: #fff; }
+    .nearest-info { display: flex; flex-direction: column; gap: 2px; }
+    .nearest-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.08em; }
+    .nearest-name  { font-size: 22px; font-weight: 700; color: #00e5ff; }
+    .nearest-full .nearest-name { color: #ef4444; }
+    .nearest-dist  { margin-left: auto; font-size: 24px; font-weight: 700; color: #fff; white-space: nowrap; }
+
+    @keyframes nearestPulse {
+      0%,100% { box-shadow: 0 0 18px rgba(0,229,255,0.25); }
+      50%      { box-shadow: 0 0 36px rgba(0,229,255,0.65); }
+    }
+    .nearest-pulse { animation: nearestPulse 0.7s ease-out; }
+  </style>
 </head>
+
 <body>
 
-  <nav class="navbar">
-    <span class="nav-logo">🅿️ Intelligent Parking System</span>
-    <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/api/status" target="_blank">API</a>
+<header>
+  <h1>🅿️ Smart Parking</h1>
+</header>
+
+<div class="container">
+
+  <!-- Nearest Spot Banner -->
+  <div id="nearest-banner" class="nearest-banner nearest-hidden">
+    <div class="nearest-icon" id="nearest-icon">P</div>
+    <div class="nearest-info">
+      <span class="nearest-label">Nearest vacant spot</span>
+      <span id="nearest-name" class="nearest-name">—</span>
     </div>
-  </nav>
-
-  <div class="container">
-
-    {% if data %}
-
-    <p class="timestamp">Last updated: {{ data.timestamp }}</p>
-
-    <!-- STATS -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <p class="stat-label">Vacant</p>
-        <p class="stat-value green">{{ data.vacant_count }}</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">Occupied</p>
-        <p class="stat-value red">{{ data.occupied_count }}</p>
-      </div>
-      <div class="stat-card">
-        <p class="stat-label">Total Spots</p>
-        <p class="stat-value">{{ data.total_spots }}</p>
-      </div>
-
-      <div class="stat-card highlight">
-        <p class="stat-label">Recommended</p>
-        <p class="stat-value yellow">{{ data.recommended_spot or 'None' }}</p>
-        <p class="stat-sub">
-          {% if data.recommended_distance %}
-            {{ "%.1f"|format(data.recommended_distance) }}m away
-          {% else %}
-            N/A
-          {% endif %}
-        </p>
-      </div>
-    </div>
-
-    <!-- MAIN GRID -->
-    <div class="main-grid">
-
-      <!-- IMAGE -->
-      <div class="card">
-        <h2>Parking Lot View</h2>
-        {% if image %}
-          <img src="data:image/jpeg;base64,{{ image }}"
-               alt="Parking Lot"
-               class="parking-image"/>
-        {% else %}
-          <div class="no-image">No image available.<br/>Run detect_parking.py first.</div>
-        {% endif %}
-
-        <div class="legend">
-          <span class="legend-item">
-            <span class="dot green-bg"></span> Vacant
-          </span>
-          <span class="legend-item">
-            <span class="dot red-bg"></span> Occupied
-          </span>
-          <span class="legend-item">
-            <span class="dot yellow-bg"></span> Recommended
-          </span>
-        </div>
-      </div>
-
-      <!-- RIGHT PANEL -->
-      <div class="right-panel">
-
-        <!-- RECOMMENDATION -->
-        {% if data.recommended_spot %}
-        <div class="rec-banner">
-          <div>
-            <p class="rec-label">Recommended Spot</p>
-            <p class="rec-spot">{{ data.recommended_spot }}</p>
-            <p class="rec-dist">
-              {{ "%.1f"|format(data.recommended_distance) if data.recommended_distance else "N/A" }}m from entrance
-            </p>
-
-            {% if data.recommended_coords %}
-            <p class="rec-gps">
-              GPS: {{ data.recommended_coords.lat }},
-                   {{ data.recommended_coords.lon }}
-            </p>
-            {% endif %}
-          </div>
-          <div class="rec-icon">⭐</div>
-        </div>
-        {% endif %}
-
-        <!-- SPOT LIST -->
-        <div class="card">
-          <h2>All Parking Spots</h2>
-          <div class="spot-list">
-            <div class="spot-header">
-              <span>Spot</span>
-              <span>Status</span>
-              <span>IoU</span>
-            </div>
-
-            {% for spot in data.spots %}
-            <div class="spot-row
-              {% if spot.name == data.recommended_spot %}recommended{% endif %}
-              {% if spot.occupied %}occupied{% else %}vacant{% endif %}">
-              
-              <span class="spot-name">{{ spot.name }}</span>
-
-              <span class="spot-status">
-                {% if spot.occupied %}
-                  <span class="badge red">OCCUPIED</span>
-                {% else %}
-                  <span class="badge green">VACANT</span>
-                {% endif %}
-              </span>
-
-              <span class="spot-iou">{{ spot.iou }}</span>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- PROOF TABLE -->
-    <div class="card proof-card">
-      <h2>Localization Proof — Distance Calculation</h2>
-      <table class="proof-table">
-        <thead>
-          <tr>
-            <th>Spot</th>
-            <th>Status</th>
-            <th>GPS Coordinates</th>
-            <th>Recommended</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for spot in data.spots %}
-          <tr class="{% if spot.name == data.recommended_spot %}rec-row{% endif %}">
-            <td class="spot-name">{{ spot.name }}</td>
-            <td>
-              {% if spot.occupied %}
-                <span class="badge red">OCCUPIED</span>
-              {% else %}
-                <span class="badge green">VACANT</span>
-              {% endif %}
-            </td>
-            <td class="gps-text">
-              {% if not spot.occupied %}
-                Loading...
-              {% else %}
-                —
-              {% endif %}
-            </td>
-            <td>
-              {% if spot.name == data.recommended_spot %}
-                <span class="badge yellow">⭐ NEAREST</span>
-              {% else %}
-                —
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    {% else %}
-    <div class="no-data">
-      <p>No parking data found.</p>
-      <p>Run <code>python detect_parking.py</code> first,
-         then refresh this page.</p>
-    </div>
-    {% endif %}
-
+    <div id="nearest-dist" class="nearest-dist">— m</div>
   </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div>Vacant:   <span id="vacant-count">--</span></div>
+    <div>Occupied: <span id="occupied-count">--</span></div>
+    <div>Total:    <span id="total-count">--</span></div>
+  </div>
+
+  <!-- ✅ FIXED: /book not /book.html -->
+  <a href="/book" class="btn-book">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+      <path d="M3 11h18v11H3z"></path>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+    Book a Slot
+  </a>
+
+  <!-- Live Video -->
+  <div>
+    <img src="/video_feed" width="100%" alt="Live parking feed"/>
+  </div>
+
+  <!-- Spot Grid -->
+  <div id="spot-grid"></div>
+
+</div>
+
+<script>
+  let _lastNearest = null;
+
+  function updateNearestBanner(data) {
+    const banner  = document.getElementById('nearest-banner');
+    const nameEl  = document.getElementById('nearest-name');
+    const distEl  = document.getElementById('nearest-dist');
+    const iconEl  = document.getElementById('nearest-icon');
+
+    if (!data.nearest) {
+      banner.classList.remove('nearest-hidden');
+      banner.classList.add('nearest-full');
+      iconEl.textContent = '!';
+      nameEl.textContent = 'Lot Full';
+      distEl.textContent = '';
+      _lastNearest = null;
+      return;
+    }
+
+    banner.classList.remove('nearest-hidden', 'nearest-full');
+    iconEl.textContent = 'P';
+
+    // Pulse only when nearest spot changes
+    if (data.nearest.name !== _lastNearest) {
+      banner.classList.remove('nearest-pulse');
+      void banner.offsetWidth; // reflow to restart animation
+      banner.classList.add('nearest-pulse');
+      _lastNearest = data.nearest.name;
+    }
+
+    nameEl.textContent = data.nearest.name;
+    distEl.textContent = Math.round(data.nearest.distance_m) + ' m';
+  }
+
+  function updateStatus() {
+    fetch('/api/live_status')
+      .then(r => r.json())
+      .then(data => {
+        updateNearestBanner(data);
+
+        document.getElementById('vacant-count').textContent   = data.vacant;
+        document.getElementById('occupied-count').textContent = data.occupied;
+        document.getElementById('total-count').textContent    = data.total;
+
+        const grid = document.getElementById('spot-grid');
+        if (data.spots) {
+          grid.innerHTML = data.spots.map(s => {
+            const isNearest = data.nearest && s.name === data.nearest.name;
+            const color     = s.occupied ? '#ef4444' : isNearest ? '#00e5ff' : '#22c55e';
+            const label     = s.occupied ? 'Occupied' : isNearest ? 'Nearest ★' : 'Vacant';
+            return `<div style="padding:8px;margin:4px;border:1px solid ${color};
+                                border-radius:6px;color:${color};">
+                      ${s.name} — ${label}
+                    </div>`;
+          }).join('');
+        }
+      })
+      .catch(err => console.warn('Poll error:', err));
+  }
+
+  updateStatus();
+  setInterval(updateStatus, 2000);
+</script>
 
 </body>
 </html>
